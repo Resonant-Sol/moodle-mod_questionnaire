@@ -228,7 +228,6 @@ class single extends responsetype {
      */
     public function display_results($rids=false, $sort='', $anonymous=false) {
         global $DB;
-
         $rows = $this->get_results($rids, $anonymous);
         if (is_array($rids)) {
             $prtotal = 1;
@@ -236,10 +235,15 @@ class single extends responsetype {
             $prtotal = 0;
         }
         $numresps = count($rids);
-
+        $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
+        $addsql = '';
+        if($enableuniquserresponse === 1 && preg_match('/myreport.php/', $_SERVER['PHP_SELF']) == false){
+            $addsql = ' AND r.response_id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
+        }
         $responsecountsql = 'SELECT COUNT(DISTINCT r.response_id) ' .
             'FROM {' . $this->response_table() . '} r ' .
-            'WHERE r.question_id = ? ';
+            'WHERE r.question_id = ? ' .
+            $addsql;
         $numrespondents = $DB->count_records_sql($responsecountsql, [$this->question->id]);
 
         if ($rows) {

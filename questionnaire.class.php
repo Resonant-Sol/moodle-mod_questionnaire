@@ -786,11 +786,14 @@ class questionnaire {
         $params = [];
         $groupsql = '';
         $groupcnd = '';
+        $addsql = '';
+        $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
         if ($groupid != 0) {
             $groupsql = 'INNER JOIN {groups_members} gm ON r.userid = gm.userid ';
             $groupcnd = ' AND gm.groupid = :groupid ';
             $params['groupid'] = $groupid;
         }
+        
 
         // Since submission can be across questionnaires in the case of public questionnaires, need to check the realm.
         // Public questionnaires can have responses to multiple questionnaire instances.
@@ -800,20 +803,23 @@ class questionnaire {
                 'INNER JOIN {questionnaire} q ON r.questionnaireid = q.id ' .
                 'INNER JOIN {questionnaire_survey} s ON q.sid = s.id ' .
                 $groupsql .
-                'WHERE s.id = :surveyid AND r.complete = :status' . $groupcnd;
+                'WHERE s.id = :surveyid AND r.complete = :status' . $groupcnd . $addsql;
             $params['surveyid'] = $this->sid;
             $params['status'] = 'y';
         } else {
             $sql = 'SELECT COUNT(r.id) ' .
                 'FROM {questionnaire_response} r ' .
                 $groupsql .
-                'WHERE r.questionnaireid = :questionnaireid AND r.complete = :status' . $groupcnd;
+                'WHERE r.questionnaireid = :questionnaireid AND r.complete = :status' . $groupcnd . $addsql;
             $params['questionnaireid'] = $this->id;
             $params['status'] = 'y';
         }
         if ($userid) {
             $sql .= ' AND r.userid = :userid';
             $params['userid'] = $userid;
+        }
+        if($enableuniquserresponse === 1 && !$userid){
+            $addsql = ' AND r.id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
         }
         return $DB->count_records_sql($sql, $params);
     }
@@ -831,10 +837,16 @@ class questionnaire {
         $params = [];
         $groupsql = '';
         $groupcnd = '';
+        $addsql = '';
+        $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
         if ($groupid != 0) {
             $groupsql = 'INNER JOIN {groups_members} gm ON r.userid = gm.userid ';
             $groupcnd = ' AND gm.groupid = :groupid ';
             $params['groupid'] = $groupid;
+        }
+
+        if($enableuniquserresponse === 1 && !$userid){
+            $addsql = ' AND r.id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
         }
 
         // Since submission can be across questionnaires in the case of public questionnaires, need to check the realm.
@@ -845,14 +857,14 @@ class questionnaire {
                 'INNER JOIN {questionnaire} q ON r.questionnaireid = q.id ' .
                 'INNER JOIN {questionnaire_survey} s ON q.sid = s.id ' .
                 $groupsql .
-                'WHERE s.id = :surveyid AND r.complete = :status' . $groupcnd;
+                'WHERE s.id = :surveyid AND r.complete = :status' . $groupcnd . $addsql;
             $params['surveyid'] = $this->sid;
             $params['status'] = 'y';
         } else {
             $sql = 'SELECT r.* ' .
                 'FROM {questionnaire_response} r ' .
                 $groupsql .
-                'WHERE r.questionnaireid = :questionnaireid AND r.complete = :status' . $groupcnd;
+                'WHERE r.questionnaireid = :questionnaireid AND r.complete = :status' . $groupcnd . $addsql;
             $params['questionnaireid'] = $this->id;
             $params['status'] = 'y';
         }
@@ -3214,6 +3226,12 @@ class questionnaire {
             }
         }
         $nbinfocols = count($columns);
+        // $addsql = '';
+        // $enableuniquserresponse = get_config('questionnaire', 'enableuniquserresponse');
+
+        // if($enableuniquserresponse == 1 && !$userid){
+        //     $addsql = ' AND r.id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
+        // }
 
         $idtocsvmap = array(
             '0',    // 0: unused

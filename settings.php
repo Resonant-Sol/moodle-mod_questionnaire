@@ -47,8 +47,11 @@ if ($ADMIN->fulltree) {
     );
 
     $settings->add(new admin_setting_configmultiselect('questionnaire/downloadoptions',
-            get_string('textdownloadoptions', 'questionnaire'), '', array_keys($choices), $choices));
+        get_string('textdownloadoptions', 'questionnaire'), '', array_keys($choices), $choices));
 
     $settings->add(new admin_setting_configcheckbox('questionnaire/allowemailreporting',
         get_string('configemailreporting', 'questionnaire'), get_string('configemailreportinglong', 'questionnaire'), 0));
+    
+    $settings->add(new admin_setting_configselect('questionnaire/enableuniquserresponse',
+        '重複回答除外','', 0, $options));
 }
