@@ -838,6 +838,11 @@ class questionnaire {
         $groupsql = '';
         $groupcnd = '';
         $addsql = '';
+        if(isset($_POST['action'])){
+            $action = $_POST['action'];
+        }else{
+            $action = '';
+        }
         $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
         if ($groupid != 0) {
             $groupsql = 'INNER JOIN {groups_members} gm ON r.userid = gm.userid ';
@@ -845,7 +850,7 @@ class questionnaire {
             $params['groupid'] = $groupid;
         }
 
-        if($enableuniquserresponse === 1 && !$userid){
+        if($enableuniquserresponse === 1 && !$userid && !($action == 'dvallresp')){
             $addsql = ' AND r.id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
         }
 
