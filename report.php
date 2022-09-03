@@ -25,6 +25,7 @@
  */
 require_once("../../config.php");
 require_once($CFG->dirroot.'/mod/questionnaire/questionnaire.class.php');
+require_once($CFG->dirroot.'/mod/questionnaire/lib/pdf/dataformat.php');
 
 $instance = optional_param('instance', false, PARAM_INT);   // Questionnaire ID.
 $action = optional_param('action', 'vall', PARAM_ALPHA);
@@ -508,10 +509,14 @@ switch ($action) {
         $emailreport = optional_param('emailreport', '', PARAM_ALPHA);
         if (empty($emailreport)) {
             // In 3.9 forward, download_as_dataformat is replaced by \core\dataformat::download_data.
-            if (method_exists('\\core\\dataformat', 'download_data')) {
-                \core\dataformat::download_data($name, $dataformat, $columns, $output);
+            if ($dataformat === 'pdf') {
+                \mod_questionnaire\dataformat::download_data($name, $dataformat, $columns, $output);
             } else {
-                download_as_dataformat($name, $dataformat, $columns, $output);
+                if (method_exists('\\core\\dataformat', 'download_data')) {
+                    \core\dataformat::download_data($name, $dataformat, $columns, $output);
+                } else {
+                    download_as_dataformat($name, $dataformat, $columns, $output);
+                }
             }
         } else {
             // Emailreport button selected.
@@ -842,7 +847,7 @@ function questionnaire_report_start_pdf() {
     $pdf->setPrintHeader(false);
     // Set default monospaced font.
     $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
-
+    
     // Set margins.
     $pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
     $pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
