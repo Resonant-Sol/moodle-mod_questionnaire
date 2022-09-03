@@ -199,7 +199,8 @@ class multiple extends single {
         $addjoinsql = '';
         
         //あなたの回答からの導線の場合、$useridが設定される
-        if(empty($userid)){
+        $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
+        if($enableuniquserresponse === 1 && empty($userid)){
             $addjoinsql1 = <<< "EOT"
     JOIN (
         SELECT

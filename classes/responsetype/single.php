@@ -241,12 +241,14 @@ class single extends responsetype {
         $addsql = '';
         $addjoinsql = '';
         $params = [];
-        if($enableuniquserresponse === 1 && preg_match('/myreport.php/', $_SERVER['PHP_SELF']) == false){
-            $addsql = ' AND r.response_id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
-        } else {
-            $addjoinsql = ' JOIN {questionnaire_response} rs ON rs.id = r.response_id AND rs.userid = ? ';
-            array_push($params, $USER->id);
-         }
+        if($enableuniquserresponse === 1) {
+            if (preg_match('/myreport.php/', $_SERVER['PHP_SELF']) == false){
+                $addsql = ' AND r.response_id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
+            } else {
+                $addjoinsql = ' JOIN {questionnaire_response} rs ON rs.id = r.response_id AND rs.userid = ? ';
+                array_push($params, $USER->id);
+            }
+        }
         array_push($params, $this->question->id);
         
         $responsecountsql = 'SELECT COUNT(DISTINCT r.response_id) ' .
@@ -391,7 +393,8 @@ class single extends responsetype {
         $addjoinsql = '';
         
         //あなたの回答からの導線の場合、$useridが設定される
-        if(empty($userid)){
+        $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
+        if($enableuniquserresponse === 1 && empty($userid)){
             $addjoinsql1 = <<< "EOT"
     JOIN (
         select
