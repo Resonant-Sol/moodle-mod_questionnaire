@@ -52,8 +52,6 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configcheckbox('questionnaire/allowemailreporting',
         get_string('configemailreporting', 'questionnaire'), get_string('configemailreportinglong', 'questionnaire'), 0));
     
-    $settings->add(new admin_setting_configselect('questionnaire/enableuniquserresponse',
-        '重複回答除外','', 0, $options));
-    // $settings->add(new admin_setting_configselect('questionnaire/enableuniquserresponse',
-    //     get_string('enableuniquserresponse', 'questionnaire'),'', 0, $options));
+    $settings->add(new admin_setting_configcheckbox('questionnaire/enableuniquserresponse',
+        get_string('enableuniquserresponse', 'questionnaire'), get_string('enableuniquserresponselong', 'questionnaire'), 0));
 }
