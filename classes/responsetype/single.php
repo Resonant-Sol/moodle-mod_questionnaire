@@ -57,7 +57,7 @@ class single extends responsetype {
                 $record->value = isset($responsedata->{$cname}) ? $responsedata->{$cname} : '';
             }
             $answers[$responsedata->{'q'.$question->id}] = answer\answer::create_from_data($record);
-        }
+        }   
         return $answers;
     }
 
@@ -228,6 +228,8 @@ class single extends responsetype {
      */
     public function display_results($rids=false, $sort='', $anonymous=false) {
         global $DB;
+        global $USER;
+        
         $rows = $this->get_results($rids, $anonymous);
         if (is_array($rids)) {
             $prtotal = 1;
@@ -237,14 +239,22 @@ class single extends responsetype {
         $numresps = count($rids);
         $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
         $addsql = '';
+        $addjoinsql = '';
+        $params = [];
         if($enableuniquserresponse === 1 && preg_match('/myreport.php/', $_SERVER['PHP_SELF']) == false){
             $addsql = ' AND r.response_id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
-        }
+        } else {
+            $addjoinsql = ' JOIN {questionnaire_response} rs ON rs.id = r.response_id AND rs.userid = ? ';
+            array_push($params, $USER->id);
+         }
+        array_push($params, $this->question->id);
+        
         $responsecountsql = 'SELECT COUNT(DISTINCT r.response_id) ' .
             'FROM {' . $this->response_table() . '} r ' .
+            $addjoinsql .
             'WHERE r.question_id = ? ' .
             $addsql;
-        $numrespondents = $DB->count_records_sql($responsecountsql, [$this->question->id]);
+        $numrespondents = $DB->count_records_sql($responsecountsql, $params);
 
         if ($rows) {
             $counts = [];
@@ -377,7 +387,31 @@ class single extends responsetype {
             $sql .= " WHERE qr.userid = ?";
             $params[] = $userid;
         }
-
+        
+        $addjoinsql = '';
+        
+        //あなたの回答からの導線の場合、$useridが設定される
+        if(empty($userid)){
+            $addjoinsql1 = <<< "EOT"
+    JOIN (
+        select
+            r.questionnaireid as question_id
+            ,r.userid
+            ,MAX(r.submitted) as submitted
+            FROM mdl_questionnaire_response r
+EOT;
+            $addjoinsql2 = <<< "EOT"
+            GROUP BY r.questionnaireid, r.userid
+    ) a ON a.question_id = qrs.question_id and a.submitted = qr.submitted and a.userid = u.id
+EOT;
+            
+            $sql .= $addjoinsql1;
+            if ($showincompletes == 1) {
+                $sql .= "    WHERE r.complete = 'y'";
+            }
+            $sql .= $addjoinsql2;
+        }
+        
         return [$sql, $params];
     }
 

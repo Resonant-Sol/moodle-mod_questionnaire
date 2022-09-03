@@ -346,6 +346,30 @@ abstract class responsetype {
             $params[] = $userid;
         }
 
+        $addjoinsql = '';
+        
+        //あなたの回答からの導線の場合、$useridが設定される
+        if(empty($userid)){
+            $addjoinsql1 = <<< "EOT"
+    JOIN (
+        SELECT
+            rst.question_id
+            ,r.userid
+            ,MAX(r.submitted) as submitted
+        FROM {questionnaire_response_text} rst
+        JOIN {questionnaire_response} r on r.id = rst.response_id
+EOT;
+            $addjoinsql2 = <<< "EOT"
+        GROUP BY rst.question_id, r.userid
+    ) a ON a.question_id = qrt.question_id and a.submitted = qr.submitted and a.userid = u.id
+EOT;
+            $sql .= $addjoinsql1;
+            if ($showincompletes == 1) {
+                $sql .= "    WHERE r.complete = 'y'";
+            }
+            $sql .= $addjoinsql2;
+        }
+        
         return [$sql, $params];
     }
 

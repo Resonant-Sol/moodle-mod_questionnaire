@@ -654,11 +654,12 @@ switch ($action) {
             $event->trigger();
 
             if ($outputtarget != 'print') {
-                $linkname = get_string('downloadpdf', 'mod_questionnaire');
-                $link = new moodle_url('/mod/questionnaire/report.php',
-                    ['action' => 'vall', 'instance' => $instance, 'group' => $currentgroupid, 'target' => 'pdf']);
-                $downpdficon = new pix_icon('f/pdf', $linkname);
-                $respinfo .= $questionnaire->renderer->action_link($link, null, null, null, $downpdficon);
+                //無限ループに入る不具合があり、一旦、コメントアウトする
+//                 $linkname = get_string('downloadpdf', 'mod_questionnaire');
+//                 $link = new moodle_url('/mod/questionnaire/report.php',
+//                     ['action' => 'vall', 'instance' => $instance, 'group' => $currentgroupid, 'target' => 'pdf']);
+//                 $downpdficon = new pix_icon('f/pdf', $linkname);
+//                 $respinfo .= $questionnaire->renderer->action_link($link, null, null, null, $downpdficon);
 
                 $linkname = get_string('print', 'mod_questionnaire');
                 $link = new \moodle_url('/mod/questionnaire/report.php',
@@ -855,5 +856,6 @@ function questionnaire_report_start_pdf() {
     // Set background color for headings.
     $pdf->SetFillColor(238, 238, 238);
     $pdf->AddPage('L');
+   
     return $pdf;
 }
