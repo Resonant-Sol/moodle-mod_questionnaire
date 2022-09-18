@@ -851,7 +851,8 @@ class questionnaire {
         }
 
         if($enableuniquserresponse === 1 && !$userid && !($action == 'dvallresp')){
-            $addsql = ' AND r.id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
+            $addsql = ' AND r.id IN (SELECT max(m.id) FROM {questionnaire_response} m WHERE m.questionnaireid = :max_questionnaireid GROUP BY m.userid ORDER BY m.id)';
+            $params['max_questionnaireid'] = $this->id;
         }
 
         // Since submission can be across questionnaires in the case of public questionnaires, need to check the realm.

@@ -243,18 +243,26 @@ class single extends responsetype {
         $params = [];
         if($enableuniquserresponse === 1) {
             if (preg_match('/myreport.php/', $_SERVER['PHP_SELF']) == false){
-                $addsql = ' AND r.response_id IN (SELECT max(m.id) FROM {questionnaire_response} m GROUP BY m.userid ORDER BY m.id)';
+                $addsql = ' AND r.response_id IN (SELECT max(m.id) FROM {questionnaire_response} m WHERE m.questionnaireid = :max_questionnaireid GROUP BY m.userid ORDER BY m.id)';
+                $response_sql = <<< EOT
+SELECT
+    qr.questionnaireid
+FROM {questionnaire_resp_single} qrs
+JOIN {questionnaire_response} qr ON qr.id = qrs.response_id
+WHERE qrs.question_id = :id
+EOT;
+                $questionnaire_response = $DB->get_record_sql($response_sql, array('id' => $this->question->id));
+                $params['max_questionnaireid'] = $questionnaire_response->questionnaireid;
             } else {
-                $addjoinsql = ' JOIN {questionnaire_response} rs ON rs.id = r.response_id AND rs.userid = ? ';
-                array_push($params, $USER->id);
+                $addjoinsql = ' JOIN {questionnaire_response} rs ON rs.id = r.response_id AND rs.userid = :userid ';
+                $params['userid'] = $USER->id;
             }
         }
-        array_push($params, $this->question->id);
-        
+        $params['question_id'] = $this->question->id;
         $responsecountsql = 'SELECT COUNT(DISTINCT r.response_id) ' .
             'FROM {' . $this->response_table() . '} r ' .
             $addjoinsql .
-            'WHERE r.question_id = ? ' .
+            'WHERE r.question_id = :question_id ' .
             $addsql;
         $numrespondents = $DB->count_records_sql($responsecountsql, $params);
 
