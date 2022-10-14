@@ -291,6 +291,85 @@ class boolean extends responsetype {
     protected function bulk_sql_config() {
         return new bulk_sql_config(static::response_table(), 'qrb', true, false, false);
     }
+    
+    /**
+     * Return sql and params for getting responses in bulk.
+     * @param int|array $questionnaireids One id, or an array of ids.
+     * @param bool|int $responseid
+     * @param bool|int $userid
+     * @param bool|int $groupid
+     * @param int $showincompletes
+     * @return array
+     * author Guy Thomas
+     */
+    public function get_bulk_sql($questionnaireids, $responseid = false, $userid = false, $groupid = false, $showincompletes = 0) {
+        global $DB;
+        
+        $sql = $this->bulk_sql();
+        if (($groupid !== false) && ($groupid > 0)) {
+            $groupsql = ' INNER JOIN {groups_members} gm ON gm.groupid = ? AND gm.userid = qr.userid ';
+            $gparams = [$groupid];
+        } else {
+            $groupsql = '';
+            $gparams = [];
+        }
+        
+        if (is_array($questionnaireids)) {
+            list($qsql, $params) = $DB->get_in_or_equal($questionnaireids);
+        } else {
+            $qsql = ' = ? ';
+            $params = [$questionnaireids];
+        }
+        if ($showincompletes == 1) {
+            $showcompleteonly = '';
+        } else {
+            $showcompleteonly = 'AND qr.complete = ? ';
+            $params[] = 'y';
+        }
+        
+        $sql .= "
+            AND qr.questionnaireid $qsql $showcompleteonly
+      LEFT JOIN {user} u ON u.id = qr.userid
+      $groupsql
+        ";
+      $params = array_merge($params, $gparams);
+      
+      if ($responseid) {
+          $sql .= " WHERE qr.id = ?";
+          $params[] = $responseid;
+      } else if ($userid) {
+          $sql .= " WHERE qr.userid = ?";
+          $params[] = $userid;
+      }
+      
+      $addjoinsql = '';
+      
+      //あなたの回答からの導線の場合、$useridが設定される
+      $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
+      if($enableuniquserresponse === 1 && empty($userid)){
+          $addjoinsql1 = <<< "EOT"
+    JOIN (
+        SELECT
+            rsb.question_id
+            ,r.userid
+            ,MAX(r.submitted) as submitted
+        FROM {questionnaire_response_bool} rsb
+        JOIN {questionnaire_response} r on r.id = rsb.response_id
+EOT;
+          $addjoinsql2 = <<< "EOT"
+            GROUP BY rsb.question_id, r.userid
+    ) a ON a.question_id = qrb.question_id and a.submitted = qr.submitted and a.userid = u.id
+EOT;
+          
+          $sql .= $addjoinsql1;
+          if ($showincompletes == 1) {
+              $sql .= "    WHERE r.complete = 'y'";
+          }
+          $sql .= $addjoinsql2;
+      }
+      
+      return [$sql, $params];
+    }
 
     /**
      * Return sql for getting responses in bulk.

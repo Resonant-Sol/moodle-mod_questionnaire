@@ -406,13 +406,14 @@ EOT;
             $addjoinsql1 = <<< "EOT"
     JOIN (
         select
-            r.questionnaireid as question_id
+            rss.question_id as question_id
             ,r.userid
             ,MAX(r.submitted) as submitted
-            FROM mdl_questionnaire_response r
+            FROM {questionnaire}_response r
+            JOIN {questionnaire_resp_single} rss ON r.id = rss.response_id
 EOT;
             $addjoinsql2 = <<< "EOT"
-            GROUP BY r.questionnaireid, r.userid
+            GROUP BY rss.question_id, r.userid
     ) a ON a.question_id = qrs.question_id and a.submitted = qr.submitted and a.userid = u.id
 EOT;
             
