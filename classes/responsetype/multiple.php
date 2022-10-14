@@ -245,4 +245,75 @@ EOT;
               JOIN {".static::response_table()."} $alias ON $alias.response_id = qr.id
         ";
     }
+    
+    /**
+     * Return the JSON structure required for the template.
+     *
+     * @param bool $rids
+     * @param string $sort
+     * @param bool $anonymous
+     * @return string
+     */
+    public function display_results($rids=false, $sort='', $anonymous=false) {
+        global $DB;
+        global $USER;
+        
+        $rows = $this->get_results($rids, $anonymous);
+        if (is_array($rids)) {
+            $prtotal = 1;
+        } else if (is_int($rids)) {
+            $prtotal = 0;
+        }
+        $numresps = count($rids);
+        $enableuniquserresponse = intval(get_config('questionnaire', 'enableuniquserresponse'));
+        $addsql = '';
+        $addjoinsql = '';
+        $params = [];
+        if($enableuniquserresponse === 1) {
+            if (preg_match('/myreport.php/', $_SERVER['PHP_SELF']) == false){
+                $addsql = ' AND r.response_id IN (SELECT max(m.id) FROM {questionnaire_response} m WHERE m.questionnaireid = :max_questionnaireid GROUP BY m.userid ORDER BY m.id)';
+                $response_sql = <<< EOT
+SELECT
+    qr.questionnaireid
+FROM {questionnaire_resp_multiple} qrs
+JOIN {questionnaire_response} qr ON qr.id = qrs.response_id
+WHERE qrs.question_id = :id
+EOT;
+                $questionnaire_response = $DB->get_record_sql($response_sql, array('id' => $this->question->id));
+                $params['max_questionnaireid'] = $questionnaire_response->questionnaireid;
+            } else {
+                $addjoinsql = ' JOIN {questionnaire_response} rs ON rs.id = r.response_id AND rs.userid = :userid ';
+                $params['userid'] = $USER->id;
+            }
+        }
+        $params['question_id'] = $this->question->id;
+        $responsecountsql = 'SELECT COUNT(DISTINCT r.response_id) ' .
+            'FROM {' . $this->response_table() . '} r ' .
+            $addjoinsql .
+            'WHERE r.question_id = :question_id ' .
+            $addsql;
+            $numrespondents = $DB->count_records_sql($responsecountsql, $params);
+            
+            if ($rows) {
+                $counts = [];
+                foreach ($rows as $idx => $row) {
+                    if (strpos($idx, 'other') === 0) {
+                        $answer = $row->response;
+                        $ccontent = $row->content;
+                        $content = \mod_questionnaire\question\choice::content_other_choice_display($ccontent);
+                        $content .= ' ' . clean_text($answer);
+                        $textidx = $content;
+                        $counts[$textidx] = !empty($counts[$textidx]) ? ($counts[$textidx] + 1) : 1;
+                    } else {
+                        $contents = questionnaire_choice_values($row->content);
+                        $textidx = $contents->text.$contents->image;
+                        $counts[$textidx] = !empty($counts[$textidx]) ? ($counts[$textidx] + 1) : 1;
+                    }
+                }
+                $pagetags = $this->get_results_tags($counts, $numresps, $numrespondents, $prtotal, $sort);
+            } else {
+                $pagetags = new \stdClass();
+            }
+            return $pagetags;
+    }
 }
